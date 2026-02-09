@@ -63,7 +63,7 @@ const Colors presets[] = {
     {255, 255, 0}, // Gul
 
     // Stemningsfulde
-     {138, 43, 226},  // Lilla (BlueViolet)
+    {138, 43, 226},  // Lilla (BlueViolet)
     {255, 20, 147},  // Hot Pink
     {255, 105, 180}, // Pink
     {64, 224, 208},  // Turkis
@@ -82,11 +82,10 @@ const Colors presets[] = {
     {80, 50, 120},   // Deep Purple (nattelys)
 };
 
-//to get avg of brightness and cus im lazy 
+// to get avg of brightness and cus im lazy
 u8 values[5];
 
 // varables
-u16 potVal = 0;
 bool on = false;
 bool lastOn = false;
 u32 lastChange = 0;
@@ -94,7 +93,7 @@ u32 lastRotRotation = 0;
 u8 presetNumber = 0;
 u32 lastColorChange = 0;
 bool normalColor = false;
-u8 lastBrightness = 0; 
+u8 lastBrightness = 0;
 // rotery.
 volatile bool rotButIsPressed = false;
 volatile int rotVal = 0;
@@ -116,7 +115,7 @@ void loadPreset(u8 num);
 void showCurrentEditColor();
 Colors getCurrentColor();
 void updateShowCurrentEditColor();
-void updateAvgBrightness();
+void updateAvgBrightness(u16 potVal);
 
 void setup()
 {
@@ -162,7 +161,8 @@ void loop()
   updateShowCurrentEditColor();
 
   // Handle brightness changes
-  if(lastBrightness != saveData.brightness){
+  if (lastBrightness != saveData.brightness)
+  {
     showBrightness();
   }
   lastBrightness = saveData.brightness;
@@ -296,8 +296,7 @@ void updateInputs()
   }
 
   // Potentiometer
-  u16 potVal = analogRead(pins::potmeter);
-  saveData.brightness = constrain(map(potVal, 0, 700, 0, 255), 0, 255);
+  updateAvgBrightness(analogRead(pins::potmeter));
 }
 
 // fader op
@@ -407,8 +406,6 @@ void printData()
   Serial.println();
   Serial.print("Rot value: ");
   Serial.println(rotVal);
-  Serial.print("pot value: ");
-  Serial.println(potVal);
   Serial.print("current color: ");
   Serial.println(saveData.currentColor);
   Serial.print("current brightness: ");
@@ -435,7 +432,7 @@ void loadPreset(u8 num)
   {
   }
   strip.show();
-  showBrightness(); // virker tror jeg ? 
+  showBrightness(); // virker tror jeg ?
 }
 
 void updateShowCurrentEditColor()
@@ -482,17 +479,25 @@ Colors getCurrentColor()
   return color;
 }
 
-
-void updateAvgBrightness()
+void updateAvgBrightness(u16 potVal)
 {
-  for (int i = 0; i < sizeof(values) - 1; i++)
+  u16 VALUES_LEN = sizeof(values) / sizeof(values[0]);
+  // shift
+  for (u8 i = 0; i < VALUES_LEN - 1; i++)
   {
     values[i] = values[i + 1];
   }
-  values[sizeof(values - 1)] = constrain(map(potVal, 0, 800, 0, 255), 0, 255);
-  u16 total = 0; 
-  for(u16 v : values){
-    total += v;
+
+  // map korrekt
+  u16 mapped = map(constrain(potVal, 0, 900), 0, 900, 0, 255);
+  values[VALUES_LEN - 1] = mapped;
+
+  // average
+  u32 total = 0;
+  for (u8 i = 0; i < VALUES_LEN; i++)
+  {
+    total += values[i];
   }
-  saveData.brightness = total /= sizeof(values);
+
+  saveData.brightness = total / VALUES_LEN;
 }
